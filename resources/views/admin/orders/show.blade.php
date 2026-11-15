@@ -28,7 +28,7 @@
 
                     <div class="d-flex flex-wrap gap-2">
                         <form action="{{ route('admin.orders.confirm', $trx->trx_id) }}" method="POST"
-                              data-confirm-title="Konfirmasi pembayaran?" data-confirm-ok="Ya, Konfirmasi" data-confirm-variant="success"
+                              data-confirm-title="Konfirmasi pembayaran?" data-confirm-ok="Ya, Konfirmasi" data-confirm-variant="warning"
                               data-confirm="Pastikan dana {{ rupiah($trx->total) }} sudah benar-benar masuk sesuai bukti. Setelah dikonfirmasi, pesanan {{ $trx->trx_id }} masuk tahap Diproses.">
                             @csrf
                             <button class="btn btn-success fw-semibold"><i class="bi bi-check2-circle me-1"></i>Konfirmasi Pembayaran</button>
