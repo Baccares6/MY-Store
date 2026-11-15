@@ -70,7 +70,7 @@ class SecurityAuditTest extends TestCase
         ]);
 
         // Lakukan checkout
-        $this->post('/checkout', ['address_id' => $this->createAddressFor($user->id), 'shipping_service' => 'jne_reg']);
+        $this->post('/checkout', ['address_id' => $this->createAddressFor($user->id), 'shipping_service' => 'jne_reg', 'payment_method' => 'bank_bca']);
 
         // Pastikan pesanan terdaftar di basis data dan verifikasi integritas harga produk
         $order = DB::table('orders')->where('user_id', $user->id)->first();
@@ -102,8 +102,8 @@ class SecurityAuditTest extends TestCase
         $this->assertDatabaseHas('cart', ['user_id' => $user->id, 'p_id' => 2]);
 
         // Checkout
-        $response = $this->post('/checkout', ['address_id' => $this->createAddressFor($user->id), 'shipping_service' => 'jne_reg']);
-        $response->assertRedirect(route('user.dashboard'));
+        $response = $this->post('/checkout', ['address_id' => $this->createAddressFor($user->id), 'shipping_service' => 'jne_reg', 'payment_method' => 'bank_bca']);
+        $response->assertRedirectContains('/orders/TRX-');
 
         // Keranjang harus sudah bersih
         $this->assertDatabaseMissing('cart', ['user_id' => $user->id]);
@@ -112,7 +112,7 @@ class SecurityAuditTest extends TestCase
         $this->assertDatabaseHas('orders', [
             'user_id' => $user->id,
             'product_id' => 2,
-            'p_status' => 'Completed',
+            'p_status' => 'Pending',
         ]);
     }
 

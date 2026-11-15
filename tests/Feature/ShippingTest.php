@@ -78,8 +78,9 @@ class ShippingTest extends TestCase
         $this->post('/checkout', [
             'address_id' => $addressId,
             'shipping_service' => 'jne_reg',
+            'payment_method' => 'bank_bca',
             'shipping_cost' => 0, // percobaan manipulasi ongkir dari browser, harus diabaikan
-        ])->assertRedirect(route('user.dashboard'));
+        ])->assertRedirectContains('/orders/TRX-');
 
         // 2 x 1.500 g = 3 kg, JNE Reguler ke Pulau Jawa Rp 12.000/kg
         $this->assertDatabaseHas('order_addresses', [
@@ -101,9 +102,9 @@ class ShippingTest extends TestCase
         $addressId = $this->createAddressFor($this->user->id, ['province' => 'Papua', 'city' => 'Kota Jayapura']);
         $this->actingAs($this->user)->post('/cart/add', ['product_id' => 1, 'qty' => 1]);
 
-        $this->post('/checkout', ['address_id' => $addressId])->assertSessionHas('error');
-        $this->post('/checkout', ['address_id' => $addressId, 'shipping_service' => 'jne_yes'])->assertSessionHas('error');
-        $this->post('/checkout', ['address_id' => $addressId, 'shipping_service' => 'kurir_palsu'])->assertSessionHas('error');
+        $this->post('/checkout', ['address_id' => $addressId, 'payment_method' => 'bank_bca'])->assertSessionHas('error');
+        $this->post('/checkout', ['address_id' => $addressId, 'shipping_service' => 'jne_yes', 'payment_method' => 'bank_bca'])->assertSessionHas('error');
+        $this->post('/checkout', ['address_id' => $addressId, 'shipping_service' => 'kurir_palsu', 'payment_method' => 'bank_bca'])->assertSessionHas('error');
 
         $this->assertDatabaseCount('orders', 0);
         $this->assertDatabaseHas('cart', ['user_id' => $this->user->id]);

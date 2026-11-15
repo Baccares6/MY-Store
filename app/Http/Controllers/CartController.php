@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\OrderStatus;
 use App\Services\ShippingCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -83,9 +84,14 @@ class CartController extends Controller
         $chargeableKg = $shipping->chargeableKg($totalWeight);
         $selectedShipping = old('shipping_service');
 
+        $paymentMethods = config('payment.methods');
+        $codProvinces = config('payment.cod_provinces');
+        $selectedPayment = old('payment_method');
+
         return view('cart', compact(
             'cartItems', 'subtotal', 'totalItems', 'addresses', 'selectedAddressId', 'provinces',
-            'shippingOptions', 'totalWeight', 'chargeableKg', 'selectedShipping'
+            'shippingOptions', 'totalWeight', 'chargeableKg', 'selectedShipping',
+            'paymentMethods', 'codProvinces', 'selectedPayment'
         ));
     }
 
@@ -234,8 +240,24 @@ class CartController extends Controller
             return redirect()->route('cart.index')->with('error', 'Pilih alamat pengiriman terlebih dahulu sebelum checkout.');
         }
 
+        // Metode pembayaran wajib dipilih; COD hanya untuk alamat di area yang dilayani
+        $method = (string) $request->input('payment_method');
+        $methodConfig = config("payment.methods.{$method}");
+
+        if (!$methodConfig) {
+            return redirect()->route('cart.index')
+                ->withInput(['address_id' => $address->id])
+                ->with('error', 'Pilih metode pembayaran terlebih dahulu sebelum checkout.');
+        }
+
+        if ($methodConfig['type'] === 'cod' && !in_array($address->province, config('payment.cod_provinces'), true)) {
+            return redirect()->route('cart.index')
+                ->withInput(['address_id' => $address->id])
+                ->with('error', 'Bayar di Tempat (COD) hanya tersedia untuk alamat di ' . implode(', ', config('payment.cod_provinces')) . '.');
+        }
+
         // Eksekusi checkout dalam transaksi database terisolasi untuk menjamin integritas data (ACID)
-        return DB::transaction(function () use ($userId, $address, $request, $shipping) {
+        return DB::transaction(function () use ($userId, $address, $request, $shipping, $method, $methodConfig) {
             $cartItems = DB::table('cart')
                 ->join('products', 'cart.p_id', '=', 'products.product_id')
                 ->where('cart.user_id', $userId)
@@ -259,16 +281,36 @@ class CartController extends Controller
 
             $trxId = 'TRX-' . strtoupper(Str::random(7));
 
-            // Insert ke tabel orders satu per satu agar trigger DBMS berjalan untuk setiap pesanan
+            // Transfer bank menunggu pembayaran; COD langsung diproses (dibayar saat barang tiba)
+            $isCod = $methodConfig['type'] === 'cod';
+            $status = $isCod ? OrderStatus::PROCESSING : OrderStatus::PENDING;
+            $subtotal = (int) $cartItems->sum(fn ($i) => $i->product_price * $i->qty);
+
+            // Insert ke tabel orders satu per satu agar trigger DBMS berjalan untuk setiap pesanan.
+            // Harga disimpan saat ini juga, sehingga riwayat tidak berubah jika harga produk diubah admin.
             foreach ($cartItems as $item) {
                 DB::table('orders')->insert([
                     'user_id'    => $userId,
                     'product_id' => $item->p_id,
                     'qty'        => $item->qty,
+                    'price'      => $item->product_price,
                     'trx_id'     => $trxId,
-                    'p_status'   => 'Completed',
+                    'p_status'   => OrderStatus::legacy($status),
                 ]);
             }
+
+            DB::table('transactions')->insert([
+                'trx_id'           => $trxId,
+                'user_id'          => $userId,
+                'subtotal'         => $subtotal,
+                'shipping_cost'    => $quote['cost'],
+                'total'            => $subtotal + $quote['cost'],
+                'payment_method'   => $method,
+                'status'           => $status,
+                'payment_deadline' => $isCod ? null : now()->addHours(config('payment.deadline_hours')),
+                'created_at'       => now(),
+                'updated_at'       => now(),
+            ]);
 
             // Simpan salinan alamat pengiriman untuk transaksi ini
             DB::table('order_addresses')->insert([
@@ -291,7 +333,11 @@ class CartController extends Controller
             // Kosongkan keranjang belanja pengguna setelah seluruh pesanan berhasil dibuat
             DB::table('cart')->where('user_id', $userId)->delete();
 
-            return redirect()->route('user.dashboard')->with('success', "Checkout berhasil! Transaksi $trxId akan dikirim dengan {$quote['courier']} {$quote['service']} ke alamat {$address->recipient_name}, {$address->city}.");
+            $message = $isCod
+                ? "Pesanan {$trxId} berhasil dibuat dan sedang diproses. Siapkan uang pas saat kurir {$quote['courier']} tiba."
+                : "Pesanan {$trxId} berhasil dibuat. Selesaikan pembayaran sebelum batas waktu agar pesanan diproses.";
+
+            return redirect()->route('orders.show', $trxId)->with('success', $message);
         });
     }
 }

@@ -11,11 +11,13 @@ Toko online sederhana berbasis Laravel 12 yang dibuat untuk Praktikum Manajemen 
 - **Keranjang belanja**: ubah jumlah dan hapus barang. Data keranjang dilindungi dari akses akun lain (IDOR).
 - **Alamat pengiriman**: buku alamat (maksimal 10), alamat utama, dan pilihan alamat saat checkout. Alamat disalin ke pesanan, sehingga riwayat tidak berubah walaupun alamatnya diedit.
 - **Ongkos kirim**: JNE, J&T, dan SiCepat. Ongkir dihitung dari zona provinsi tujuan dan berat barang, dengan gudang asal di Kabupaten Sleman. Tarifnya simulasi dan bisa diubah di `config/shipping.php`.
-- **Checkout atomik**: memakai `DB::transaction` dan `lockForUpdate`. Harga dan ongkir selalu dihitung ulang di server.
+- **Checkout atomik**: memakai `DB::transaction` dan `lockForUpdate`. Harga dan ongkir selalu dihitung ulang di server, dan harga saat beli disimpan di setiap pesanan.
+- **Pembayaran manual**: transfer bank (BCA/BNI/BRI/Mandiri) atau QRIS statis dengan unggah bukti pembayaran, atau COD untuk alamat di DIY. Gambar QRIS bawaan hanya kode QR contoh; ganti dengan QRIS asli lewat `PAYMENT_QRIS_IMAGE` di `.env`. Status pesanan: Menunggu Pembayaran → Menunggu Konfirmasi → Diproses → Dikirim (dengan nomor resi) → Selesai, ditambah Dibatalkan dan Kedaluwarsa (batas bayar 24 jam). Admin memeriksa bukti dan memproses pesanan di menu **Kelola Pesanan**. Nomor rekening bisa diatur lewat `.env` (`PAYMENT_BCA_ACCOUNT`, dan seterusnya).
+- **Login dengan Google/Facebook**: memakai Laravel Socialite. Isi `GOOGLE_CLIENT_ID`/`SECRET` dan `FACEBOOK_CLIENT_ID`/`SECRET` di `.env`.
 - **Panel admin**: CRUD produk (termasuk berat kirim), log aktivitas, dan pengelolaan FAQ chatbot.
 - **MY-Bot**: chatbot rule-based untuk mencari produk, filter harga, cek keranjang, status pesanan, perkiraan ongkir ("ongkir ke surabaya 2 kg"), dan FAQ dari database.
 
-Pembayaran online (payment gateway) belum tersedia.
+Payment gateway otomatis (Midtrans/Xendit) belum tersedia. Pesanan yang lewat batas waktu bayar ditandai kedaluwarsa saat halaman pesanan dibuka, atau lewat perintah terjadwal `php artisan orders:expire`.
 
 ## Teknologi
 

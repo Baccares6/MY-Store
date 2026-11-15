@@ -74,3 +74,24 @@ if (!function_exists('getProductImageUrl')) {
         return 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=500&q=80';
     }
 }
+
+if (!function_exists('formatWib')) {
+    /**
+     * Waktu tersimpan dalam UTC; tampilkan dalam WIB dengan nama bulan bahasa Indonesia
+     */
+    function formatWib($value, string $format = 'D MMM YYYY, HH.mm'): string
+    {
+        if (empty($value)) {
+            return '-';
+        }
+
+        return \Carbon\Carbon::parse($value, 'UTC')->timezone('Asia/Jakarta')->locale('id')->isoFormat($format) . ' WIB';
+    }
+}
+
+if (!function_exists('rupiah')) {
+    function rupiah($value): string
+    {
+        return 'Rp ' . number_format((float) $value, 0, ',', '.');
+    }
+}

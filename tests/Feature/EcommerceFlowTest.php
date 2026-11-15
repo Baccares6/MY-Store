@@ -105,15 +105,15 @@ class EcommerceFlowTest extends TestCase
         $cartPage->assertSee('Samsung Galaxy S6');
 
         // 4. Perform checkout
-        $checkoutResponse = $this->post('/checkout', ['address_id' => $this->createAddressFor($user->id), 'shipping_service' => 'jne_reg']);
-        $checkoutResponse->assertRedirect(route('user.dashboard'));
+        $checkoutResponse = $this->post('/checkout', ['address_id' => $this->createAddressFor($user->id), 'shipping_service' => 'jne_reg', 'payment_method' => 'bank_bca']);
+        $checkoutResponse->assertRedirectContains('/orders/TRX-');
 
         // 5. Verify order is in database and cart is cleared
         $this->assertDatabaseHas('orders', [
             'user_id' => $user->id,
             'product_id' => 1,
             'qty' => 2,
-            'p_status' => 'Completed',
+            'p_status' => 'Pending',
         ]);
         $this->assertDatabaseMissing('cart', [
             'user_id' => $user->id,

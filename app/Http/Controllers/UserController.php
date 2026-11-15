@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\OrderStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,19 +16,37 @@ class UserController extends Controller
     {
         $user = Auth::user();
 
-        $orders = DB::table('orders')
-            ->where('orders.user_id', $user->id)
-            ->leftJoin('products', 'orders.product_id', '=', 'products.product_id')
-            ->select('orders.*', 'products.product_title', 'products.product_price', 'products.product_image')
-            ->orderBy('orders.order_id', 'desc')
+        OrderStatus::expireOverdue($user->id);
+
+        // Riwayat pesanan per transaksi, lengkap dengan alamat & kurir tujuan
+        $transactions = DB::table('transactions')
+            ->leftJoin('order_addresses', 'transactions.trx_id', '=', 'order_addresses.trx_id')
+            ->where('transactions.user_id', $user->id)
+            ->select(
+                'transactions.*',
+                'order_addresses.recipient_name',
+                'order_addresses.city',
+                'order_addresses.courier',
+                'order_addresses.courier_service'
+            )
+            ->orderByDesc('transactions.id')
             ->get();
 
-        // Satu transaksi (trx_id) bisa berisi beberapa baris barang, jadi yang dihitung transaksinya
-        $total_orders = $orders->pluck('trx_id')->unique()->count();
-        $total_items = $orders->sum('qty');
-        $total_spent = $orders->sum(function ($order) {
-            return ($order->product_price ?? 0) * $order->qty;
-        });
+        // Barang di tiap transaksi (harga saat beli), dikelompokkan per trx_id
+        $itemsByTrx = DB::table('orders')
+            ->leftJoin('products', 'orders.product_id', '=', 'products.product_id')
+            ->where('orders.user_id', $user->id)
+            ->select('orders.trx_id', 'orders.qty', 'products.product_title', 'products.product_image')
+            ->orderBy('orders.order_id')
+            ->get()
+            ->groupBy('trx_id');
+
+        // Pesanan yang dibatalkan/kedaluwarsa tidak dihitung sebagai belanja
+        $active = $transactions->reject(fn ($t) => in_array($t->status, [OrderStatus::CANCELLED, OrderStatus::EXPIRED], true));
+
+        $total_orders = $transactions->count();
+        $total_items = $active->sum(fn ($t) => $itemsByTrx->get($t->trx_id, collect())->sum('qty'));
+        $total_spent = $active->sum('total');
 
         // Buku alamat pengguna, alamat utama ditampilkan paling atas
         $addresses = DB::table('addresses')
@@ -37,15 +56,6 @@ class UserController extends Controller
             ->get();
         $provinces = config('wilayah.provinces');
 
-        // Alamat tujuan tiap transaksi (salinan saat checkout), dikelompokkan per trx_id
-        $orderAddresses = DB::table('order_addresses')
-            ->where('user_id', $user->id)
-            ->get()
-            ->keyBy('trx_id');
-
-        // Total belanja ikut menghitung ongkos kirim setiap transaksi
-        $total_spent += $orderAddresses->sum('shipping_cost');
-
-        return view('user', compact('user', 'orders', 'total_orders', 'total_items', 'total_spent', 'addresses', 'provinces', 'orderAddresses'));
+        return view('user', compact('user', 'transactions', 'itemsByTrx', 'total_orders', 'total_items', 'total_spent', 'addresses', 'provinces'));
     }
 }

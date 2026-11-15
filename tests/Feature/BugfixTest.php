@@ -175,7 +175,7 @@ class BugfixTest extends TestCase
 
         $this->post('/cart/add', ['product_id' => 1, 'qty' => 1]);
         $this->post('/cart/add', ['product_id' => 2, 'qty' => 2]);
-        $this->post('/checkout', ['address_id' => $addressId, 'shipping_service' => 'jne_reg']);
+        $this->post('/checkout', ['address_id' => $addressId, 'shipping_service' => 'jne_reg', 'payment_method' => 'bank_bca']);
 
         $this->get('/user-dashboard')
             ->assertViewHas('total_orders', 1)

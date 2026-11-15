@@ -543,6 +543,11 @@
             white-space: nowrap;
         }
 
+        .payment-option.is-disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
         .checkout-hint {
             font-size: 12px;
             color: var(--text-muted);
@@ -707,6 +712,7 @@
                             @foreach ($addresses as $addr)
                                 <label class="address-option">
                                     <input type="radio" name="address_id" value="{{ $addr->id }}" form="checkout-form"
+                                           data-cod="{{ in_array($addr->province, $codProvinces, true) ? '1' : '0' }}"
                                            {{ (int) $addr->id === $selectedAddressId ? 'checked' : '' }}>
                                     <div>
                                         <div class="address-name">
@@ -759,6 +765,38 @@
                             @endforelse
                         </div>
                     </div>
+
+                    @php
+                        $selectedAddr = $addresses->firstWhere('id', $selectedAddressId);
+                        $codAvailable = $selectedAddr && in_array($selectedAddr->province, $codProvinces, true);
+                    @endphp
+                    <div class="address-card">
+                        <div class="address-card-head">
+                            <h2 class="address-card-title">Metode Pembayaran</h2>
+                        </div>
+                        <div class="address-list" id="payment-list">
+                            @foreach ($paymentMethods as $code => $pm)
+                                @php($isCod = $pm['type'] === 'cod')
+                                <label class="address-option payment-option {{ $isCod && !$codAvailable ? 'is-disabled' : '' }}" @if ($isCod) data-cod-option @endif>
+                                    <input type="radio" name="payment_method" value="{{ $code }}" form="checkout-form" required
+                                           {{ $selectedPayment === $code && (!$isCod || $codAvailable) ? 'checked' : '' }}
+                                           {{ $isCod && !$codAvailable ? 'disabled' : '' }}>
+                                    <div class="shipping-info">
+                                        <div class="shipping-name">{{ $pm['label'] }}</div>
+                                        <div class="address-text" @if ($isCod) data-cod-note @endif>
+                                            @if ($isCod)
+                                                {{ $codAvailable ? 'Bayar tunai ke kurir saat pesanan tiba.' : 'Hanya untuk alamat di ' . implode(', ', $codProvinces) . '.' }}
+                                            @elseif ($pm['type'] === 'qris')
+                                                Scan dengan GoPay, OVO, DANA, ShopeePay, atau m-banking, lalu unggah bukti bayar.
+                                            @else
+                                                Transfer manual, lalu unggah bukti transfer. Dicek oleh admin.
+                                            @endif
+                                        </div>
+                                    </div>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
                 @endif
 
                 <div class="cart-card">
@@ -802,7 +840,9 @@
                                     <div class="item-subtotal">Rp {{ number_format($item->product_price * $item->qty, 0, ',', '.') }}</div>
                                 </td>
                                 <td>
-                                    <form action="{{ route('cart.remove', $item->cart_id) }}" method="POST" onsubmit="return confirm('Hapus produk ini dari keranjang?');">
+                                    <form action="{{ route('cart.remove', $item->cart_id) }}" method="POST"
+                                          data-confirm-title="Hapus dari keranjang?" data-confirm-ok="Hapus" data-confirm-variant="danger"
+                                          data-confirm="&quot;{{ $item->product_title }}&quot; akan dikeluarkan dari keranjang belanja Anda.">
                                         @csrf
                                         <button type="submit" class="btn-remove" title="Hapus"><i class="fa fa-trash-alt"></i></button>
                                     </form>
@@ -923,7 +963,22 @@
                         updateSummary();
                     }
 
-                    document.querySelectorAll('input[name="address_id"]').forEach(r => r.addEventListener('change', () => renderOptions(r.value)));
+                    // COD hanya tersedia untuk alamat di area tertentu; pilihan ikut berubah saat alamat diganti
+                    const codOption = document.querySelector('[data-cod-option]');
+                    const codNote = document.querySelector('[data-cod-note]');
+                    const codNoteOn = 'Bayar tunai ke kurir saat pesanan tiba.';
+                    const codNoteOff = @json('Hanya untuk alamat di ' . implode(', ', $codProvinces) . '.');
+                    function updateCod(radio) {
+                        if (!codOption) return;
+                        const allowed = radio.dataset.cod === '1';
+                        const input = codOption.querySelector('input');
+                        input.disabled = !allowed;
+                        if (!allowed) input.checked = false;
+                        codOption.classList.toggle('is-disabled', !allowed);
+                        codNote.textContent = allowed ? codNoteOn : codNoteOff;
+                    }
+
+                    document.querySelectorAll('input[name="address_id"]').forEach(r => r.addEventListener('change', () => { renderOptions(r.value); updateCod(r); }));
                     list.addEventListener('change', updateSummary);
                 })();
             </script>
@@ -936,5 +991,7 @@
 
     {{-- Widget Chatbot MY-Bot --}}
     @include('partials.chatbot')
+    {{-- Jendela konfirmasi MY-Store (pengganti confirm() bawaan browser) --}}
+    @include('partials.confirm-dialog')
 </body>
 </html>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\OrderStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -24,7 +25,9 @@ class AdminController extends Controller
         $brands = DB::table('brands')->get();
 
         $total_products = DB::table('products')->count();
-        $total_orders = DB::table('orders')->count();
+        // Satu transaksi bisa berisi beberapa barang, jadi yang dihitung transaksinya
+        $total_orders = DB::table('transactions')->count();
+        $waiting_orders = DB::table('transactions')->where('status', OrderStatus::WAITING)->count();
         $total_users = DB::table('users')->count();
         $total_logs = DB::table('logs')->count();
 
@@ -50,6 +53,7 @@ class AdminController extends Controller
             'brands',
             'total_products',
             'total_orders',
+            'waiting_orders',
             'total_users',
             'total_logs',
             'faqs',

@@ -9,6 +9,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\AddressController;
 use App\Http\Controllers\SocialAuthController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\AdminOrderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,6 +47,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.remove');
     Route::post('/checkout', [CartController::class, 'checkout'])->name('checkout');
 
+    // Pesanan Saya: detail & instruksi bayar, unggah bukti transfer, batalkan, konfirmasi diterima
+    Route::get('/orders/{trx}', [OrderController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{trx}/proof', [OrderController::class, 'uploadProof'])->name('orders.proof.upload');
+    Route::get('/orders/{trx}/proof', [OrderController::class, 'proof'])->name('orders.proof');
+    Route::post('/orders/{trx}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+    Route::post('/orders/{trx}/received', [OrderController::class, 'received'])->name('orders.received');
+
     // Buku Alamat Pengiriman (Dilindungi dari IDOR)
     Route::post('/addresses', [AddressController::class, 'store'])->name('addresses.store');
     Route::post('/addresses/{id}/update', [AddressController::class, 'update'])->name('addresses.update');
@@ -63,6 +72,15 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('/products', [AdminController::class, 'storeProduct'])->name('admin.products.store');
     Route::post('/products/{id}/update', [AdminController::class, 'updateProduct'])->name('admin.products.update');
     Route::post('/products/{id}/delete', [AdminController::class, 'deleteProduct'])->name('admin.products.delete');
+
+    // Kelola Pesanan & Konfirmasi Pembayaran Manual
+    Route::get('/orders', [AdminOrderController::class, 'index'])->name('admin.orders');
+    Route::get('/orders/{trx}', [AdminOrderController::class, 'show'])->name('admin.orders.show');
+    Route::post('/orders/{trx}/confirm', [AdminOrderController::class, 'confirm'])->name('admin.orders.confirm');
+    Route::post('/orders/{trx}/reject', [AdminOrderController::class, 'reject'])->name('admin.orders.reject');
+    Route::post('/orders/{trx}/ship', [AdminOrderController::class, 'ship'])->name('admin.orders.ship');
+    Route::post('/orders/{trx}/complete', [AdminOrderController::class, 'complete'])->name('admin.orders.complete');
+    Route::post('/orders/{trx}/cancel', [AdminOrderController::class, 'cancel'])->name('admin.orders.cancel');
 
     // Manajemen Basis Pengetahuan (FAQ) Chatbot
     Route::post('/chatbot/faqs', [AdminController::class, 'storeFaq'])->name('admin.faqs.store');

@@ -101,7 +101,7 @@
                 </div>
 
                 <div class="list-group shadow-sm border-0">
-                    <a href="#" class="list-group-item list-group-item-action active" style="background-color: #870000; border-color: #870000;"><i class="bi bi-clock-history me-2"></i>Riwayat Pesanan Belanja</a>
+                    <a href="#pesanan" class="list-group-item list-group-item-action active" style="background-color: #870000; border-color: #870000;"><i class="bi bi-clock-history me-2"></i>Pesanan Saya</a>
                     <a href="{{ route('cart.index') }}" class="list-group-item list-group-item-action"><i class="bi bi-cart me-2"></i>Lihat Keranjang Belanja</a>
                     <a href="{{ route('home') }}" class="list-group-item list-group-item-action"><i class="bi bi-shop me-2"></i>Kembali Belanja di Toko</a>
                 </div>
@@ -138,7 +138,9 @@
                                             <button type="submit" class="btn btn-link btn-sm p-0 text-decoration-none text-secondary fw-semibold">Jadikan Utama</button>
                                         </form>
                                     @endunless
-                                    <form action="{{ route('addresses.delete', $addr->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus alamat ini?');">
+                                    <form action="{{ route('addresses.delete', $addr->id) }}" method="POST" class="d-inline"
+                                          data-confirm-title="Hapus alamat?" data-confirm-ok="Hapus" data-confirm-variant="danger"
+                                          data-confirm="Alamat {{ $addr->recipient_name }}, {{ $addr->city }} akan dihapus dari buku alamat. Pesanan yang sudah dibuat tidak terpengaruh.">
                                         @csrf
                                         <button type="submit" class="btn btn-link btn-sm p-0 text-decoration-none text-secondary fw-semibold">Hapus</button>
                                     </form>
@@ -174,73 +176,58 @@
                     </div>
                 </div>
 
-                <div class="card shadow-sm border-0 mb-4 bg-white">
-                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
-                        <h5 class="card-title fw-bold mb-0 text-dark"><i class="bi bi-receipt me-2" style="color: #870000;"></i>Riwayat Transaksi Pesanan Anda</h5>
-                        <span class="badge bg-success px-3 py-2"><i class="bi bi-arrow-repeat me-1"></i>Tersinkronisasi Real-Time</span>
+                <div class="card shadow-sm border-0 mb-4 bg-white" id="pesanan">
+                    <div class="card-header bg-white py-3 border-bottom">
+                        <h5 class="card-title fw-bold mb-0 text-dark"><i class="bi bi-receipt me-2" style="color: #870000;"></i>Pesanan Saya</h5>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Order ID</th>
-                                        <th>Barang yang Dipesan</th>
-                                        <th>Harga Unit</th>
-                                        <th>Jumlah</th>
-                                        <th>Total</th>
-                                        <th>No. Transaksi (Trx ID)</th>
-                                        <th>Status Faktur</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($orders as $ord)
-                                    <tr>
-                                        <td class="fw-bold">#{{ $ord->order_id }}</td>
-                                        <td>
-                                            <div class="d-flex align-items-center gap-2">
-                                                <img src="{{ getProductImageUrl($ord->product_image, $ord->product_title) }}" alt="product" class="prod-thumb">
-                                                <div>
-                                                    <div class="fw-semibold">{{ $ord->product_title ?? 'Produk ID #' . $ord->product_id }}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>Rp {{ number_format($ord->product_price ?? 0, 0, ',', '.') }}</td>
-                                        <td><span class="badge bg-secondary">{{ $ord->qty }} unit</span></td>
-                                        <td class="fw-bold text-danger">Rp {{ number_format(($ord->product_price ?? 0) * $ord->qty, 0, ',', '.') }}</td>
-                                        <td>
-                                            <code>{{ $ord->trx_id }}</code>
-                                            @if ($shipTo = $orderAddresses->get($ord->trx_id))
-                                                <div class="small text-muted mt-1" title="{{ $shipTo->address_detail }}, {{ $shipTo->district }}, {{ $shipTo->city }}, {{ $shipTo->province }} {{ $shipTo->postal_code }}">
-                                                    Kirim ke {{ $shipTo->recipient_name }}, {{ $shipTo->city }}
-                                                </div>
-                                                @if ($shipTo->courier)
-                                                    <div class="small text-muted">
-                                                        {{ $shipTo->courier }} {{ $shipTo->courier_service }} &middot; Ongkir Rp {{ number_format($shipTo->shipping_cost, 0, ',', '.') }}
-                                                    </div>
-                                                @endif
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <span class="badge {{ $ord->p_status == 'Completed' ? 'bg-success' : 'bg-warning text-dark' }}">
-                                                {{ $ord->p_status }}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    @empty
-                                    <tr>
-                                        <td colspan="7" class="text-center py-5 text-muted">
-                                            <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
-                                            Belum ada riwayat pesanan.<br>
-                                            <a href="{{ route('home') }}" class="btn btn-sm btn-danger mt-3" style="background-color: #870000;">
-                                                <i class="bi bi-bag-plus me-1"></i>Mulai Belanja Sekarang
-                                            </a>
-                                        </td>
-                                    </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
+                        @forelse ($transactions as $t)
+                            @php
+                                $items = $itemsByTrx->get($t->trx_id, collect());
+                                $first = $items->first();
+                                $needsPayment = $t->status === \App\Services\OrderStatus::PENDING;
+                            @endphp
+                            <div class="d-flex flex-column flex-md-row justify-content-between gap-3 px-4 py-3 {{ !$loop->last ? "border-bottom" : "" }}">
+                                <div class="d-flex gap-3">
+                                    @if ($first)
+                                        <img src="{{ getProductImageUrl($first->product_image, $first->product_title) }}" alt="" class="prod-thumb">
+                                    @endif
+                                    <div>
+                                        <div class="d-flex flex-wrap align-items-center gap-2">
+                                            <code>{{ $t->trx_id }}</code>
+                                            <span class="badge {{ \App\Services\OrderStatus::badge($t->status) }}">{{ \App\Services\OrderStatus::label($t->status) }}</span>
+                                        </div>
+                                        <div class="fw-semibold mt-1">
+                                            {{ $first->product_title ?? "Pesanan" }}
+                                            @if ($items->count() > 1)<span class="text-muted fw-normal">+{{ $items->count() - 1 }} barang lainnya</span>@endif
+                                        </div>
+                                        <div class="small text-muted">
+                                            {{ formatWib($t->created_at) }}
+                                            @if ($t->recipient_name) &middot; Kirim ke {{ $t->recipient_name }}, {{ $t->city }} @endif
+                                            @if ($t->courier) &middot; {{ $t->courier }} {{ $t->courier_service }} @endif
+                                        </div>
+                                        @if ($needsPayment)
+                                            <div class="small text-danger mt-1">Bayar sebelum {{ formatWib($t->payment_deadline) }}</div>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="text-md-end flex-shrink-0">
+                                    <div class="small text-muted">Total belanja</div>
+                                    <div class="fw-bold" style="color: #870000;">{{ rupiah($t->total) }}</div>
+                                    <a href="{{ route("orders.show", $t->trx_id) }}" class="btn btn-sm mt-2 {{ $needsPayment ? "btn-danger" : "btn-outline-secondary" }}" @if ($needsPayment) style="background-color:#870000;border-color:#870000;" @endif>
+                                        {{ $needsPayment ? "Bayar Sekarang" : "Lihat Detail" }}
+                                    </a>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                                Belum ada pesanan.<br>
+                                <a href="{{ route("home") }}" class="btn btn-sm btn-danger mt-3" style="background-color: #870000;">
+                                    <i class="bi bi-bag-plus me-1"></i>Mulai Belanja Sekarang
+                                </a>
+                            </div>
+                        @endforelse
                     </div>
                 </div>
             </div>
@@ -305,5 +292,7 @@
     </script>
     {{-- Widget Chatbot MY-Bot --}}
     @include('partials.chatbot')
+    {{-- Jendela konfirmasi MY-Store (pengganti confirm() bawaan browser) --}}
+    @include('partials.confirm-dialog')
 </body>
 </html>

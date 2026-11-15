@@ -102,16 +102,18 @@ class ChatbotTest extends TestCase
 
     public function test_faq_answers_follow_current_store_features(): void
     {
-        // Pembayaran online belum ada, bot tidak boleh menjanjikan transfer/QRIS/COD
+        // Hanya metode yang benar-benar tersedia: transfer bank, QRIS statis, dan COD
         $payment = $this->ask('cara pembayaran gimana?')->json('reply');
-        $this->assertStringContainsString('belum dibuka', $payment);
+        $this->assertStringContainsString('Transfer bank BCA, BNI, BRI, dan Mandiri', $payment);
+        $this->assertStringContainsString('QRIS: scan kode QR toko', $payment);
+        $this->ask('bisa bayar pakai qris?')->assertJsonPath('meta.topic', 'Metode Pembayaran');
 
         $this->ask('berapa ongkirnya?')->assertJsonPath('meta.topic', 'Pengiriman & Ongkir');
         $this->ask('gimana cara ganti alamat?')->assertJsonPath('meta.topic', 'Alamat Pengiriman');
 
         $howTo = $this->ask('cara belanja di sini')->json('reply');
-        $this->assertStringContainsString('alamat pengiriman', $howTo);
-        $this->assertStringContainsString('Pilih kurir', $howTo);
+        $this->assertStringContainsString('Pilih alamat, kurir, dan metode pembayaran', $howTo);
+        $this->assertStringContainsString('Untuk transfer bank atau QRIS', $howTo);
     }
 
     public function test_shipping_estimate_by_city_province_and_weight(): void

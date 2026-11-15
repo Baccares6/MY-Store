@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\OrderStatus;
 use App\Services\ShippingCalculator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -313,6 +314,8 @@ class ChatbotController extends Controller
             return $this->loginRequired('melihat status pesanan');
         }
 
+        OrderStatus::expireOverdue(Auth::id());
+
         $transactions = DB::table('orders')
             ->join('products', 'orders.product_id', '=', 'products.product_id')
             ->where('orders.user_id', Auth::id())
@@ -321,7 +324,7 @@ class ChatbotController extends Controller
                 'orders.trx_id',
                 'orders.p_status',
                 DB::raw('SUM(orders.qty) as total_qty'),
-                DB::raw('SUM(orders.qty * products.product_price) as total_price'),
+                DB::raw('SUM(orders.qty * COALESCE(orders.price, products.product_price)) as total_price'),
                 DB::raw('MAX(orders.order_id) as last_id')
             )
             ->orderByDesc('last_id')
@@ -341,10 +344,15 @@ class ChatbotController extends Controller
             ->get()
             ->keyBy('trx_id');
 
+        // Status & total resmi dari tabel transaksi (jika ada)
+        $headers = DB::table('transactions')->whereIn('trx_id', $transactions->pluck('trx_id'))->get()->keyBy('trx_id');
+
         $lines = ['Berikut ' . $transactions->count() . ' transaksi terakhir Anda:'];
         foreach ($transactions as $t) {
-            $total = $t->total_price + ($shipments->get($t->trx_id)->shipping_cost ?? 0);
-            $lines[] = "• {$t->trx_id} — {$t->total_qty} item, " . $this->rupiah($total) . " ({$t->p_status})";
+            $header = $headers->get($t->trx_id);
+            $total = $header->total ?? ($t->total_price + ($shipments->get($t->trx_id)->shipping_cost ?? 0));
+            $status = $header ? OrderStatus::label($header->status) : $t->p_status;
+            $lines[] = "• {$t->trx_id} — {$t->total_qty} item, " . $this->rupiah($total) . " ({$status})";
         }
         $lines[] = 'Ketik kode transaksi (misal ' . $transactions->first()->trx_id . ') untuk melihat detailnya.';
 
@@ -364,7 +372,7 @@ class ChatbotController extends Controller
             ->join('products', 'orders.product_id', '=', 'products.product_id')
             ->where('orders.trx_id', $trxId)
             ->where('orders.user_id', Auth::id())
-            ->select('products.product_title', 'products.product_price', 'orders.qty', 'orders.p_status')
+            ->select('products.product_title', DB::raw('COALESCE(orders.price, products.product_price) as product_price'), 'orders.qty', 'orders.p_status')
             ->get();
 
         if ($items->isEmpty()) {
@@ -373,8 +381,11 @@ class ChatbotController extends Controller
             ]);
         }
 
+        $header = DB::table('transactions')->where('trx_id', $trxId)->where('user_id', Auth::id())->first();
+
         $total = 0;
-        $lines = ["Detail transaksi {$trxId} — Status: {$items->first()->p_status}"];
+        $status = $header ? OrderStatus::label($header->status) : $items->first()->p_status;
+        $lines = ["Detail transaksi {$trxId} — Status: {$status}"];
         foreach ($items as $it) {
             $subtotal = $it->product_price * $it->qty;
             $total += $subtotal;
@@ -394,10 +405,22 @@ class ChatbotController extends Controller
             }
             $lines[] = "Dikirim ke: {$shipment->recipient_name}, {$shipment->district}, {$shipment->city}";
         }
-        $lines[] = 'Total: ' . $this->rupiah($total);
+        $lines[] = 'Total: ' . $this->rupiah($header->total ?? $total);
+
+        if ($header && $header->payment_method !== 'legacy') {
+            $lines[] = 'Metode bayar: ' . OrderStatus::methodLabel($header->payment_method);
+        }
+        if ($header && $header->status === OrderStatus::PENDING) {
+            $lines[] = 'Segera bayar sebelum ' . formatWib($header->payment_deadline) . ', lalu unggah bukti transfer.';
+        }
+        if ($header && $header->tracking_number) {
+            $lines[] = 'Nomor resi: ' . $header->tracking_number;
+        }
 
         return $this->reply('order_detail', implode("\n", $lines), [
-            'actions' => [['label' => 'Buka Dashboard Pesanan', 'url' => route('user.dashboard')]],
+            'actions' => [$header
+                ? ['label' => $header->status === OrderStatus::PENDING ? 'Bayar Sekarang' : 'Lihat Pesanan', 'url' => route('orders.show', $trxId)]
+                : ['label' => 'Buka Dashboard Pesanan', 'url' => route('user.dashboard')]],
         ]);
     }
 

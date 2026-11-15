@@ -141,7 +141,7 @@ class AddressTest extends TestCase
         $ownerAddressId = $this->createAddressFor($owner->id);
 
         $this->actingAs($this->user)->post('/cart/add', ['product_id' => 1, 'qty' => 1]);
-        $this->post('/checkout', ['address_id' => $ownerAddressId, 'shipping_service' => 'jne_reg'])->assertSessionHas('error');
+        $this->post('/checkout', ['address_id' => $ownerAddressId, 'shipping_service' => 'jne_reg', 'payment_method' => 'bank_bca'])->assertSessionHas('error');
 
         $this->assertDatabaseCount('orders', 0);
     }
@@ -151,7 +151,7 @@ class AddressTest extends TestCase
         $addressId = $this->createAddressFor($this->user->id);
 
         $this->actingAs($this->user)->post('/cart/add', ['product_id' => 1, 'qty' => 1]);
-        $this->post('/checkout', ['address_id' => $addressId, 'shipping_service' => 'jne_reg'])->assertRedirect(route('user.dashboard'));
+        $this->post('/checkout', ['address_id' => $addressId, 'shipping_service' => 'jne_reg', 'payment_method' => 'bank_bca'])->assertRedirectContains('/orders/TRX-');
 
         $trxId = DB::table('orders')->where('user_id', $this->user->id)->value('trx_id');
 

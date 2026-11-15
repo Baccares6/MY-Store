@@ -34,6 +34,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link text-white-50 px-3 py-2 d-flex justify-content-between align-items-center" href="{{ route('admin.orders') }}">
+                        <span><i class="bi bi-receipt me-2"></i>Kelola Pesanan</span>
+                        @if ($waiting_orders > 0)<span class="badge bg-warning text-dark">{{ $waiting_orders }}</span>@endif
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link text-white-50 px-3 py-2" href="#tabel-produk">
                         <i class="bi bi-box me-2"></i>Manajemen Produk
                     </a>
@@ -97,6 +103,13 @@
                         @endforeach
                     </ul>
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+
+            @if ($waiting_orders > 0)
+                <div class="alert alert-info border-0 shadow-sm d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-bell-fill me-2"></i><strong>{{ $waiting_orders }} pesanan</strong> menunggu konfirmasi pembayaran.</span>
+                    <a href="{{ route('admin.orders', ['status' => 'waiting_confirmation']) }}" class="btn btn-sm btn-dark">Periksa</a>
                 </div>
             @endif
 
@@ -168,7 +181,9 @@
                                         <button class="btn btn-outline-warning btn-sm me-1" data-bs-toggle="modal" data-bs-target="#modalEditProduct{{ $p->product_id }}" title="Edit Produk">
                                             <i class="bi bi-pencil-square"></i> Edit
                                         </button>
-                                        <form action="{{ route('admin.products.delete', $p->product_id) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus produk ini?');">
+                                        <form action="{{ route('admin.products.delete', $p->product_id) }}" method="POST" class="d-inline"
+                                              data-confirm-title="Hapus produk?" data-confirm-ok="Hapus" data-confirm-variant="danger"
+                                              data-confirm="&quot;{{ $p->product_title }}&quot; akan dihapus dari katalog dan keranjang pembeli. Tindakan ini tidak bisa dibatalkan.">
                                             @csrf
                                             <button type="submit" class="btn btn-outline-danger btn-sm" title="Hapus Produk">
                                                 <i class="bi bi-trash"></i> Delete
@@ -412,7 +427,9 @@
                                             @csrf
                                             <button class="btn btn-sm btn-outline-secondary" title="Aktif/Nonaktifkan"><i class="bi bi-toggle-{{ $faq->is_active ? 'on' : 'off' }}"></i></button>
                                         </form>
-                                        <form action="{{ route('admin.faqs.delete', $faq->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus FAQ ini?')">
+                                        <form action="{{ route('admin.faqs.delete', $faq->id) }}" method="POST" class="d-inline"
+                                              data-confirm-title="Hapus FAQ?" data-confirm-ok="Hapus" data-confirm-variant="danger"
+                                              data-confirm="FAQ &quot;{{ $faq->topic }}&quot; akan dihapus dan tidak lagi dipakai MY-Bot untuk menjawab pertanyaan.">
                                             @csrf
                                             <button class="btn btn-sm btn-outline-danger" title="Hapus"><i class="bi bi-trash"></i></button>
                                         </form>
@@ -470,5 +487,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {{-- Jendela konfirmasi MY-Store (pengganti confirm() bawaan browser) --}}
+    @include('partials.confirm-dialog')
 </body>
 </html>
