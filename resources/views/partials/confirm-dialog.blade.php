@@ -126,6 +126,9 @@
             if (!pendingForm) return;
             okBtn.disabled = true;           // cegah klik ganda
             pendingForm.dataset.confirmed = '1';
+            pendingForm.querySelectorAll('button[type="submit"], button:not([type])').forEach(btn => {
+                if (!btn.disabled) { btn.disabled = true; btn.dataset.autoDisabled = '1'; }
+            });
             pendingForm.submit();
         });
 
@@ -137,5 +140,31 @@
         });
 
         dialog.addEventListener('close', () => { pendingForm = null; });
+
+        // Cegah klik ganda: setelah form benar-benar dikirim, tombol submit-nya dinonaktifkan.
+        // (Didaftarkan setelah pencegat konfirmasi di atas, jadi form yang masih menunggu konfirmasi tidak ikut.)
+        document.addEventListener('submit', function (e) {
+            if (e.defaultPrevented) return;
+            const form = e.target;
+            setTimeout(() => {
+                form.querySelectorAll('button[type="submit"], button:not([type])').forEach(btn => {
+                    if (btn.disabled) return;
+                    btn.disabled = true;
+                    btn.dataset.autoDisabled = '1';   // penanda: dinonaktifkan oleh skrip ini, bukan dari server
+                });
+            }, 0);
+        });
+
+        // Halaman yang dipulihkan lewat tombol Back (bfcache) dikembalikan ke keadaan awal
+        window.addEventListener('pageshow', function (e) {
+            if (!e.persisted) return;
+            if (dialog.open) dialog.close();
+            okBtn.disabled = false;
+            document.querySelectorAll('form[data-confirmed]').forEach(f => delete f.dataset.confirmed);
+            document.querySelectorAll('button[data-auto-disabled]').forEach(btn => {
+                btn.disabled = false;
+                delete btn.dataset.autoDisabled;
+            });
+        });
     })();
 </script>

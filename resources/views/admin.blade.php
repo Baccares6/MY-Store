@@ -12,6 +12,8 @@
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
         .sidebar { min-height: 100vh; background-color: #1e293b; }
+        /* Di layar HP sidebar tampil di atas konten, jadi tidak perlu setinggi layar */
+        @media (max-width: 767.98px) { .sidebar { min-height: auto; } }
         .card-stat { border: none; border-radius: 14px; color: #fff; transition: transform 0.2s; }
         .card-stat:hover { transform: translateY(-3px); }
         .prod-img-preview { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; }
@@ -357,7 +359,7 @@
                                     <td class="fw-bold">#{{ $l->id }}</td>
                                     <td><span class="badge bg-dark">User ID: {{ $l->user_id }}</span></td>
                                     <td class="fw-semibold text-primary">{{ $l->action }}</td>
-                                    <td class="text-muted small">{{ $l->date }}</td>
+                                    <td class="text-muted small">{{ \Carbon\Carbon::parse($l->date, 'Asia/Jakarta')->locale('id')->isoFormat('D MMM YYYY, HH.mm.ss') }} WIB</td>
                                 </tr>
                                 @empty
                                 <tr><td colspan="4" class="text-center py-4 text-muted">Belum ada riwayat log.</td></tr>
@@ -468,7 +470,7 @@
                             <tbody>
                                 @forelse($chat_logs as $c)
                                 <tr>
-                                    <td class="text-muted text-nowrap">{{ $c->created_at }}</td>
+                                    <td class="text-muted text-nowrap">{{ formatWib($c->created_at, 'D MMM YYYY, HH.mm.ss') }}</td>
                                     <td>{!! $c->user_name ? e($c->user_name) : '<span class="text-muted fst-italic">Tamu</span>' !!}</td>
                                     <td class="fw-semibold">{{ $c->message }}</td>
                                     <td><span class="badge bg-dark">{{ $c->intent }}</span></td>

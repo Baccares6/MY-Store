@@ -181,10 +181,65 @@ class PaymentFlowTest extends TestCase
 
         $t = DB::table('transactions')->where('trx_id', $trx)->first();
         $this->assertSame(OrderStatus::PENDING, $t->status);
-        $this->assertNull($t->payment_proof);
         $this->assertSame('Nominal transfer tidak sesuai', $t->admin_note);
 
-        $this->actingAs($this->buyer)->get("/orders/{$trx}")->assertSee('Bukti transfer ditolak')->assertSee('Nominal transfer tidak sesuai');
+        // Bukti yang ditolak tetap tersimpan sebagai arsip dan bisa dilihat admin
+        $rejectedProof = $t->payment_proof;
+        Storage::disk('local')->assertExists($rejectedProof);
+        $this->get("/admin/orders/{$trx}")->assertSee('Lihat bukti yang ditolak');
+
+        $this->actingAs($this->buyer)->get("/orders/{$trx}")->assertSee('Bukti pembayaran ditolak')->assertSee('Nominal transfer tidak sesuai');
+
+        // Setelah pembeli mengunggah ulang, bukti lama yang ditolak dihapus
+        $this->post("/orders/{$trx}/proof", ['proof' => $this->fakeProof()])->assertSessionHas('success');
+        Storage::disk('local')->assertMissing($rejectedProof);
+        $this->assertSame(OrderStatus::WAITING, $this->trxStatus($trx));
+    }
+
+    public function test_buyer_cannot_cancel_after_uploading_proof(): void
+    {
+        $trx = $this->checkout();
+        $this->post("/orders/{$trx}/proof", ['proof' => $this->fakeProof()]);
+
+        // Pembeli sudah membayar: tombol batal diganti arahan ke CS, dan permintaan batal ditolak
+        $this->get("/orders/{$trx}")
+            ->assertSee('Hubungi CS kami')
+            ->assertSee('Anda tidak perlu membayar lagi')
+            ->assertDontSee('Jangan melakukan pembayaran sungguhan');
+        $this->post("/orders/{$trx}/cancel")->assertSessionHas('error');
+        $this->assertSame(OrderStatus::WAITING, $this->trxStatus($trx));
+
+        // Admin masih bisa membatalkan, dengan catatan pengembalian dana untuk pembeli
+        $this->actingAs($this->admin)->post("/admin/orders/{$trx}/cancel", ['reason' => 'Stok habis'])
+            ->assertSessionHas('success', fn ($m) => str_contains($m, 'kembalikan dana'));
+        $this->assertStringContainsString('Dana akan dikembalikan', DB::table('transactions')->where('trx_id', $trx)->value('admin_note'));
+    }
+
+    public function test_status_change_is_rejected_when_status_changed_in_between(): void
+    {
+        $trx = $this->checkout();
+
+        // Halaman pembeli masih menampilkan "Menunggu Pembayaran", tetapi admin sudah membatalkannya
+        DB::table('transactions')->where('trx_id', $trx)->update(['status' => OrderStatus::CANCELLED]);
+
+        $this->post("/orders/{$trx}/proof", ['proof' => $this->fakeProof()])->assertSessionHas('error');
+        $this->assertSame(OrderStatus::CANCELLED, $this->trxStatus($trx));
+        $this->assertSame([], Storage::disk('local')->allFiles('payment-proofs'));
+
+        $this->assertNull(OrderStatus::change($trx, OrderStatus::PROCESSING, [], [OrderStatus::WAITING]));
+    }
+
+    public function test_expiry_is_logged_as_system_and_not_counted_as_spending(): void
+    {
+        $trx = $this->checkout();
+
+        // Pesanan belum dibayar tidak dihitung sebagai belanja
+        $this->get('/user-dashboard')->assertViewHas('total_spent', 0);
+
+        DB::table('transactions')->where('trx_id', $trx)->update(['payment_deadline' => now()->subMinute()]);
+        $this->get('/user-dashboard');
+
+        $this->assertDatabaseHas('logs', ['user_id' => 'system', 'action' => "Status {$trx}: Pending -> Expired"]);
     }
 
     public function test_invalid_transitions_and_uploads_are_rejected(): void

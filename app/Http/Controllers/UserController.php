@@ -44,9 +44,13 @@ class UserController extends Controller
         // Pesanan yang dibatalkan/kedaluwarsa tidak dihitung sebagai belanja
         $active = $transactions->reject(fn ($t) => in_array($t->status, [OrderStatus::CANCELLED, OrderStatus::EXPIRED], true));
 
+        // Total belanja hanya dari pesanan yang pembayarannya sudah beres
+        // (transfer/QRIS sudah dikonfirmasi admin, atau COD yang sedang diproses/dikirim/selesai)
+        $paid = $transactions->filter(fn ($t) => in_array($t->status, [OrderStatus::PROCESSING, OrderStatus::SHIPPED, OrderStatus::COMPLETED], true));
+
         $total_orders = $transactions->count();
         $total_items = $active->sum(fn ($t) => $itemsByTrx->get($t->trx_id, collect())->sum('qty'));
-        $total_spent = $active->sum('total');
+        $total_spent = $paid->sum('total');
 
         // Buku alamat pengguna, alamat utama ditampilkan paling atas
         $addresses = DB::table('addresses')

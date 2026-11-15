@@ -109,6 +109,61 @@
 
             <!-- Konten Utama: Alamat & Riwayat Pesanan User -->
             <div class="col-lg-8">
+                <div class="card shadow-sm border-0 mb-4 bg-white" id="pesanan">
+                    <div class="card-header bg-white py-3 border-bottom">
+                        <h5 class="card-title fw-bold mb-0 text-dark"><i class="bi bi-receipt me-2" style="color: #870000;"></i>Pesanan Saya</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        @forelse ($transactions as $t)
+                            @php
+                                $items = $itemsByTrx->get($t->trx_id, collect());
+                                $first = $items->first();
+                                $needsPayment = $t->status === \App\Services\OrderStatus::PENDING;
+                            @endphp
+                            <div class="d-flex flex-column flex-md-row justify-content-between gap-3 px-4 py-3 {{ !$loop->last ? "border-bottom" : "" }}">
+                                <div class="d-flex gap-3">
+                                    @if ($first)
+                                        <img src="{{ getProductImageUrl($first->product_image, $first->product_title) }}" alt="" class="prod-thumb">
+                                    @endif
+                                    <div>
+                                        <div class="d-flex flex-wrap align-items-center gap-2">
+                                            <code>{{ $t->trx_id }}</code>
+                                            <span class="badge {{ \App\Services\OrderStatus::badge($t->status) }}">{{ \App\Services\OrderStatus::label($t->status) }}</span>
+                                        </div>
+                                        <div class="fw-semibold mt-1">
+                                            {{ $first->product_title ?? "Pesanan" }}
+                                            @if ($items->count() > 1)<span class="text-muted fw-normal">+{{ $items->count() - 1 }} barang lainnya</span>@endif
+                                        </div>
+                                        <div class="small text-muted">
+                                            {{ formatWib($t->created_at) }}
+                                            @if ($t->recipient_name) &middot; Kirim ke {{ $t->recipient_name }}, {{ $t->city }} @endif
+                                            @if ($t->courier) &middot; {{ $t->courier }} {{ $t->courier_service }} @endif
+                                        </div>
+                                        @if ($needsPayment)
+                                            <div class="small text-danger mt-1">Bayar sebelum {{ formatWib($t->payment_deadline) }}</div>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="text-md-end flex-shrink-0">
+                                    <div class="small text-muted">Total belanja</div>
+                                    <div class="fw-bold" style="color: #870000;">{{ rupiah($t->total) }}</div>
+                                    <a href="{{ route("orders.show", $t->trx_id) }}" class="btn btn-sm mt-2 {{ $needsPayment ? "btn-danger" : "btn-outline-secondary" }}" @if ($needsPayment) style="background-color:#870000;border-color:#870000;" @endif>
+                                        {{ $needsPayment ? "Bayar Sekarang" : "Lihat Detail" }}
+                                    </a>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                                Belum ada pesanan.<br>
+                                <a href="{{ route("home") }}" class="btn btn-sm btn-danger mt-3" style="background-color: #870000;">
+                                    <i class="bi bi-bag-plus me-1"></i>Mulai Belanja Sekarang
+                                </a>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+
                 <div class="card shadow-sm border-0 mb-4 bg-white" id="alamat">
                     <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
                         <h5 class="card-title fw-bold mb-0 text-dark"><i class="bi bi-geo-alt me-2" style="color: #870000;"></i>Alamat Pengiriman</h5>
@@ -176,60 +231,6 @@
                     </div>
                 </div>
 
-                <div class="card shadow-sm border-0 mb-4 bg-white" id="pesanan">
-                    <div class="card-header bg-white py-3 border-bottom">
-                        <h5 class="card-title fw-bold mb-0 text-dark"><i class="bi bi-receipt me-2" style="color: #870000;"></i>Pesanan Saya</h5>
-                    </div>
-                    <div class="card-body p-0">
-                        @forelse ($transactions as $t)
-                            @php
-                                $items = $itemsByTrx->get($t->trx_id, collect());
-                                $first = $items->first();
-                                $needsPayment = $t->status === \App\Services\OrderStatus::PENDING;
-                            @endphp
-                            <div class="d-flex flex-column flex-md-row justify-content-between gap-3 px-4 py-3 {{ !$loop->last ? "border-bottom" : "" }}">
-                                <div class="d-flex gap-3">
-                                    @if ($first)
-                                        <img src="{{ getProductImageUrl($first->product_image, $first->product_title) }}" alt="" class="prod-thumb">
-                                    @endif
-                                    <div>
-                                        <div class="d-flex flex-wrap align-items-center gap-2">
-                                            <code>{{ $t->trx_id }}</code>
-                                            <span class="badge {{ \App\Services\OrderStatus::badge($t->status) }}">{{ \App\Services\OrderStatus::label($t->status) }}</span>
-                                        </div>
-                                        <div class="fw-semibold mt-1">
-                                            {{ $first->product_title ?? "Pesanan" }}
-                                            @if ($items->count() > 1)<span class="text-muted fw-normal">+{{ $items->count() - 1 }} barang lainnya</span>@endif
-                                        </div>
-                                        <div class="small text-muted">
-                                            {{ formatWib($t->created_at) }}
-                                            @if ($t->recipient_name) &middot; Kirim ke {{ $t->recipient_name }}, {{ $t->city }} @endif
-                                            @if ($t->courier) &middot; {{ $t->courier }} {{ $t->courier_service }} @endif
-                                        </div>
-                                        @if ($needsPayment)
-                                            <div class="small text-danger mt-1">Bayar sebelum {{ formatWib($t->payment_deadline) }}</div>
-                                        @endif
-                                    </div>
-                                </div>
-                                <div class="text-md-end flex-shrink-0">
-                                    <div class="small text-muted">Total belanja</div>
-                                    <div class="fw-bold" style="color: #870000;">{{ rupiah($t->total) }}</div>
-                                    <a href="{{ route("orders.show", $t->trx_id) }}" class="btn btn-sm mt-2 {{ $needsPayment ? "btn-danger" : "btn-outline-secondary" }}" @if ($needsPayment) style="background-color:#870000;border-color:#870000;" @endif>
-                                        {{ $needsPayment ? "Bayar Sekarang" : "Lihat Detail" }}
-                                    </a>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="text-center py-5 text-muted">
-                                <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
-                                Belum ada pesanan.<br>
-                                <a href="{{ route("home") }}" class="btn btn-sm btn-danger mt-3" style="background-color: #870000;">
-                                    <i class="bi bi-bag-plus me-1"></i>Mulai Belanja Sekarang
-                                </a>
-                            </div>
-                        @endforelse
-                    </div>
-                </div>
             </div>
         </div>
     </div>

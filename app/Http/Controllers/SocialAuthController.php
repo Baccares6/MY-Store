@@ -68,6 +68,13 @@ class SocialAuthController extends Controller
                 return $this->failed("Akun {$label} Anda tidak membagikan alamat email. Izinkan akses email, atau daftar dengan email biasa.");
             }
 
+            // Penggabungan/pembuatan akun berdasarkan email hanya untuk email yang sudah diverifikasi penyedia,
+            // agar akun orang lain (termasuk admin) tidak bisa diambil alih lewat email yang belum terbukti miliknya
+            $raw = $social->getRaw();
+            if (($raw['email_verified'] ?? $raw['verified_email'] ?? true) === false) {
+                return $this->failed("Email akun {$label} Anda belum terverifikasi. Verifikasi email tersebut terlebih dahulu, atau daftar dengan email biasa.");
+            }
+
             $user = User::where('email', $email)->first();
 
             if ($user) {

@@ -805,6 +805,8 @@
     </footer>
 
     {{-- Widget Chatbot MY-Bot --}}
+    {{-- Jendela konfirmasi & pencegah klik ganda MY-Store --}}
+    @include('partials.confirm-dialog')
     @include('partials.chatbot')
 </body>
 </html>

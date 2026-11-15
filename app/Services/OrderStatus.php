@@ -84,13 +84,18 @@ class OrderStatus
 
     /**
      * Ubah status transaksi beserta kolom pendukungnya, sinkronkan orders.p_status, dan catat ke log.
+     *
+     * Status saat ini dibaca ulang di dalam kunci baris (lockForUpdate) dan hanya diubah jika termasuk $from,
+     * sehingga dua aksi yang bersamaan (misal pembeli membatalkan saat admin mengonfirmasi) tidak saling menimpa.
+     *
+     * @return object|null  baris transaksi sebelum diubah, atau null jika status sudah berubah / tidak ditemukan
      */
-    public static function change(string $trxId, string $status, array $extra = []): void
+    public static function change(string $trxId, string $status, array $extra = [], ?array $from = null, ?string $actor = null): ?object
     {
-        DB::transaction(function () use ($trxId, $status, $extra) {
+        return DB::transaction(function () use ($trxId, $status, $extra, $from, $actor) {
             $trx = DB::table('transactions')->where('trx_id', $trxId)->lockForUpdate()->first();
-            if (!$trx) {
-                return;
+            if (!$trx || ($from !== null && !in_array($trx->status, $from, true))) {
+                return null;
             }
 
             DB::table('transactions')->where('trx_id', $trxId)->update($extra + [
@@ -103,11 +108,13 @@ class OrderStatus
             // Tabel logs di database lama: charset latin1 & kolom action VARCHAR(50),
             // jadi pesan memakai kode status pendek ASCII, contoh "Status TRX-AB12CD3: Pending -> Verifying"
             DB::table('logs')->insert([
-                'user_id' => (string) (Auth::id() ?? 'system'),
+                'user_id' => $actor ?? (string) (Auth::id() ?? 'system'),
                 'action'  => mb_substr("Status {$trxId}: " . (self::LEGACY[$trx->status] ?? $trx->status) . ' -> ' . self::legacy($status), 0, 50),
                 // Waktu dari database (sama seperti trigger trg_log_order_insert) agar isi tabel logs konsisten
                 'date'    => DB::raw('CURRENT_TIMESTAMP'),
             ]);
+
+            return $trx;
         });
     }
 
@@ -128,8 +135,12 @@ class OrderStatus
 
         $expired = 0;
         foreach ($query->pluck('trx_id') as $trxId) {
-            self::change($trxId, self::EXPIRED, ['cancelled_at' => now(), 'admin_note' => 'Batas waktu pembayaran terlewati.']);
-            $expired++;
+            // Dicatat sebagai 'system' (bukan pengguna yang kebetulan membuka halaman); dilewati jika
+            // pembeli baru saja mengunggah bukti sehingga statusnya bukan lagi Menunggu Pembayaran
+            $changed = self::change($trxId, self::EXPIRED,
+                ['cancelled_at' => now(), 'admin_note' => 'Batas waktu pembayaran terlewati.'],
+                [self::PENDING], 'system');
+            $expired += $changed ? 1 : 0;
         }
 
         return $expired;

@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 $request->is('cart/add')                  => 'Silakan masuk ke akun Anda terlebih dahulu sebelum memasukkan produk ke keranjang belanja.',
                 $request->is('cart', 'cart/*', 'checkout') => 'Silakan masuk ke akun Anda terlebih dahulu untuk melihat keranjang belanja.',
                 $request->is('user-dashboard')            => 'Silakan masuk ke akun Anda terlebih dahulu untuk membuka Dashboard.',
+                $request->is('orders', 'orders/*')        => 'Silakan masuk ke akun Anda terlebih dahulu untuk melihat pesanan.',
                 $request->is('admin', 'admin/*')          => 'Silakan masuk dengan akun admin terlebih dahulu.',
                 default                                   => 'Silakan masuk ke akun Anda terlebih dahulu.',
             };

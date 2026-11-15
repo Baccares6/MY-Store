@@ -7,7 +7,7 @@
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pb-3 mb-3 border-bottom">
         <div>
             <h1 class="h4 fw-bold mb-1">Kelola Pesanan</h1>
-            <p class="text-muted small mb-0">Periksa bukti transfer, kirim pesanan, dan pantau status pembayaran.</p>
+            <p class="text-muted small mb-0">Periksa bukti pembayaran, kirim pesanan, dan pantau status pembayaran.</p>
         </div>
     </div>
 

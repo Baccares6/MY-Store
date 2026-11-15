@@ -28,9 +28,9 @@ class SocialLoginTest extends TestCase
     }
 
     /** Simulasikan data akun yang dikembalikan Google/Facebook setelah pengguna menyetujui login */
-    private function fakeSocialUser(string $provider, array $data): void
+    private function fakeSocialUser(string $provider, array $data, array $raw = []): void
     {
-        $user = (new SocialiteUser())->map($data + ['nickname' => null, 'avatar' => null]);
+        $user = (new SocialiteUser())->setRaw($raw)->map($data + ['nickname' => null, 'avatar' => null]);
 
         $driver = Mockery::mock(Provider::class);
         $driver->shouldReceive('redirectUrl')->andReturnSelf();
@@ -120,6 +120,19 @@ class SocialLoginTest extends TestCase
 
         $this->assertSame(0, User::count());
         $this->assertGuest();
+    }
+
+    public function test_unverified_email_cannot_take_over_existing_account(): void
+    {
+        $admin = User::create(['name' => 'admin', 'email' => 'admin@example.com', 'password' => Hash::make('secret123'), 'is_admin' => true]);
+        $this->fakeSocialUser('google', ['id' => 'g-evil', 'name' => 'Penyusup', 'email' => 'admin@example.com'], ['email_verified' => false]);
+
+        $this->get('/auth/google/callback?code=abc')
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('error', fn ($m) => str_contains($m, 'belum terverifikasi'));
+
+        $this->assertGuest();
+        $this->assertNull($admin->fresh()->google_id);
     }
 
     public function test_cancelled_login_shows_message(): void

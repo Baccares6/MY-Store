@@ -12,6 +12,8 @@
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
         .sidebar { min-height: 100vh; background-color: #1e293b; }
+        /* Di layar HP sidebar tampil di atas konten, jadi tidak perlu setinggi layar */
+        @media (max-width: 767.98px) { .sidebar { min-height: auto; } }
         .card { border: none; border-radius: 14px; }
         .table th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
         .prod-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; }

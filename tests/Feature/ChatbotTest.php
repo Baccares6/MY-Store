@@ -157,6 +157,18 @@ class ChatbotTest extends TestCase
         $this->assertStringContainsString('TRX-ONG1234 — 2 item, Rp 9.036.000', $history);
     }
 
+    public function test_order_code_with_extra_hyphen_is_recognized(): void
+    {
+        $owner = User::create(['name' => 'eka', 'email' => 'eka@example.com', 'password' => bcrypt('secret123')]);
+        DB::table('orders')->insert([
+            'user_id' => $owner->id, 'product_id' => 1, 'qty' => 1, 'trx_id' => 'TRX-BAB5-001', 'p_status' => 'Completed',
+        ]);
+        $this->actingAs($owner);
+
+        $reply = $this->ask('status TRX-BAB5-001')->json('reply');
+        $this->assertStringContainsString('Detail transaksi TRX-BAB5-001', $reply);
+    }
+
     public function test_cart_summary_mentions_shipping(): void
     {
         $user = User::create(['name' => 'dewi', 'email' => 'dewi@example.com', 'password' => bcrypt('secret123')]);

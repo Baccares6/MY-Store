@@ -115,11 +115,15 @@
 
                         @if ($status === OrderStatus::WAITING)
                             <div class="alert alert-info py-2 small mb-3">
-                                Bukti pembayaran sudah kami terima {{ formatWib($trx->proof_uploaded_at) }} dan sedang diperiksa admin.
+                                Bukti pembayaran sudah kami terima {{ formatWib($trx->proof_uploaded_at) }} dan sedang diperiksa admin,
+                                biasanya kurang dari 1x24 jam. Anda tidak perlu membayar lagi.
                                 <a href="{{ route('orders.proof', $trx->trx_id) }}" target="_blank" rel="noopener">Lihat bukti</a>
                             </div>
+                            <div class="small text-muted mb-3">Total dibayar: <strong class="text-dark">{{ rupiah($trx->total) }}</strong> lewat {{ OrderStatus::methodLabel($trx->payment_method) }}</div>
                         @endif
 
+                        {{-- Instruksi bayar hanya saat belum membayar; setelah bukti diunggah cukup tampilkan status --}}
+                        @if ($status === OrderStatus::PENDING)
                         @if ($isDemo)
                             <div class="alert alert-warning py-2 small">
                                 <i class="bi bi-info-circle me-1"></i><strong>Website demo.</strong>
@@ -178,7 +182,14 @@
                         </div>
                         <p class="small text-muted mb-3">Transfer sesuai jumlah di atas agar pembayaran mudah dicocokkan. Setelah transfer, unggah foto atau screenshot bukti transfernya.</p>
                         @endif
+                        @endif
 
+                        @if ($status === OrderStatus::WAITING)
+                            {{-- Ganti bukti disembunyikan agar tidak terkesan harus membayar lagi --}}
+                            <details class="small">
+                                <summary class="text-muted" style="cursor:pointer;">Salah mengunggah bukti? Ganti bukti pembayaran</summary>
+                                <div class="mt-2">
+                        @endif
                         <form action="{{ route('orders.proof.upload', $trx->trx_id) }}" method="POST" enctype="multipart/form-data" class="d-flex flex-column flex-sm-row gap-2">
                             @csrf
                             <input type="file" name="proof" accept="image/jpeg,image/png,image/webp" class="form-control" required>
@@ -187,6 +198,10 @@
                             </button>
                         </form>
                         <div class="form-text">JPG, PNG, atau WEBP, maksimal {{ $maxKb / 1024 }} MB.</div>
+                        @if ($status === OrderStatus::WAITING)
+                                </div>
+                            </details>
+                        @endif
                     </div>
                 @endif
 
@@ -244,13 +259,16 @@
                     </div>
                 </div>
 
-                @if (in_array($status, [OrderStatus::PENDING, OrderStatus::WAITING], true))
+                {{-- Pembeli hanya bisa membatalkan sebelum membayar; setelah bukti diunggah, pembatalan lewat CS --}}
+                @if ($status === OrderStatus::PENDING)
                     <form action="{{ route('orders.cancel', $trx->trx_id) }}" method="POST"
                           data-confirm-title="Batalkan pesanan?" data-confirm-ok="Ya, Batalkan" data-confirm-cancel="Tidak" data-confirm-variant="danger"
-                          data-confirm="Pesanan {{ $trx->trx_id }} akan dibatalkan dan tidak bisa diaktifkan kembali. Jika sudah membayar, jangan batalkan; tunggu konfirmasi admin.">
+                          data-confirm="Pesanan {{ $trx->trx_id }} akan dibatalkan dan tidak bisa diaktifkan kembali.">
                         @csrf
                         <button type="submit" class="btn btn-link text-secondary p-0 small">Batalkan pesanan</button>
                     </form>
+                @elseif (in_array($status, [OrderStatus::WAITING, OrderStatus::PROCESSING], true))
+                    <p class="small text-muted mb-0">Ingin membatalkan pesanan yang sudah dibayar? Hubungi CS kami (tanya lewat MY-Bot: "kontak CS") agar pengembalian dana bisa diurus.</p>
                 @endif
             </div>
 

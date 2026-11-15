@@ -97,8 +97,8 @@ class ChatbotController extends Controller
      */
     private function resolve(string $text): array
     {
-        // 1) Kode transaksi spesifik, contoh: "status TRX-AB12CD3"
-        if (preg_match('/\btrx-[a-z0-9]{4,}\b/i', $text, $m)) {
+        // 1) Kode transaksi spesifik, contoh: "status TRX-AB12CD3" (juga format lama bertanda hubung, mis. TRX-BAB5-001)
+        if (preg_match('/\btrx-[a-z0-9]{3,}(?:-[a-z0-9]+)*\b/i', $text, $m)) {
             return $this->orderDetail(strtoupper($m[0]));
         }
 
@@ -411,7 +411,7 @@ class ChatbotController extends Controller
             $lines[] = 'Metode bayar: ' . OrderStatus::methodLabel($header->payment_method);
         }
         if ($header && $header->status === OrderStatus::PENDING) {
-            $lines[] = 'Segera bayar sebelum ' . formatWib($header->payment_deadline) . ', lalu unggah bukti transfer.';
+            $lines[] = 'Segera bayar sebelum ' . formatWib($header->payment_deadline) . ', lalu unggah bukti pembayaran.';
         }
         if ($header && $header->tracking_number) {
             $lines[] = 'Nomor resi: ' . $header->tracking_number;

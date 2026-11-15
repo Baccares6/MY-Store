@@ -22,7 +22,7 @@
                     <h2 class="h6 fw-bold mb-3">Periksa Bukti Pembayaran</h2>
                     <p class="small text-muted mb-2">Cocokkan nominal dan tujuan pembayaran di bukti dengan data pesanan: <strong class="text-dark">{{ rupiah($trx->total) }}</strong> lewat {{ $S::methodLabel($trx->payment_method) }}.</p>
                     <a href="{{ route('orders.proof', $trx->trx_id) }}" target="_blank" rel="noopener">
-                        <img src="{{ route('orders.proof', $trx->trx_id) }}" alt="Bukti transfer" class="img-fluid rounded border mb-3" style="max-height: 420px;">
+                        <img src="{{ route('orders.proof', $trx->trx_id) }}" alt="Bukti pembayaran" class="img-fluid rounded border mb-3" style="max-height: 420px;">
                     </a>
                     <div class="small text-muted mb-3">Diunggah {{ formatWib($trx->proof_uploaded_at) }}</div>
 
@@ -44,8 +44,11 @@
                 </div>
             @elseif ($trx->status === $S::PENDING)
                 <div class="alert alert-warning border-0 shadow-sm">
-                    Menunggu pembeli membayar dan mengunggah bukti transfer. Batas waktu: <strong>{{ formatWib($trx->payment_deadline) }}</strong>.
+                    Menunggu pembeli membayar dan mengunggah bukti pembayaran. Batas waktu: <strong>{{ formatWib($trx->payment_deadline) }}</strong>.
                     @if ($trx->admin_note)<div class="small mt-1">Catatan terakhir: {{ $trx->admin_note }}</div>@endif
+                    @if ($trx->payment_proof)
+                        <div class="small mt-1"><a href="{{ route('orders.proof', $trx->trx_id) }}" target="_blank" rel="noopener">Lihat bukti yang ditolak</a></div>
+                    @endif
                 </div>
             @elseif ($trx->status === $S::PROCESSING)
                 <div class="card shadow-sm p-4 mb-4">
@@ -101,10 +104,18 @@
                 </table>
             </div>
 
+            {{-- Bukti pembayaran tetap bisa dilihat setelah dikonfirmasi, sebagai arsip --}}
+            @if ($trx->payment_proof && in_array($trx->status, [$S::PROCESSING, $S::SHIPPED, $S::COMPLETED, $S::CANCELLED], true))
+                <p class="small mb-3"><a href="{{ route('orders.proof', $trx->trx_id) }}" target="_blank" rel="noopener"><i class="bi bi-image me-1"></i>Lihat bukti pembayaran</a></p>
+            @endif
+
             @if (in_array($trx->status, [$S::PENDING, $S::WAITING, $S::PROCESSING], true))
                 <button class="btn btn-link text-danger p-0 small" type="button" data-bs-toggle="collapse" data-bs-target="#cancelForm">Batalkan pesanan</button>
                 <form action="{{ route('admin.orders.cancel', $trx->trx_id) }}" method="POST" class="collapse mt-2" id="cancelForm">
                     @csrf
+                    @if ($trx->paid_at || $trx->status === $S::WAITING)
+                        <div class="alert alert-warning py-2 small mb-2">Pembeli sudah membayar. Setelah dibatalkan, kembalikan dana ke pembeli.</div>
+                    @endif
                     <input type="text" name="reason" class="form-control mb-2" maxlength="200" placeholder="Alasan pembatalan (ditampilkan ke pembeli)" required>
                     <button class="btn btn-danger btn-sm">Batalkan pesanan</button>
                 </form>
