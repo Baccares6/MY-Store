@@ -22,7 +22,8 @@ class UserController extends Controller
             ->orderBy('orders.order_id', 'desc')
             ->get();
 
-        $total_orders = $orders->count();
+        // Satu transaksi (trx_id) bisa berisi beberapa baris barang, jadi yang dihitung transaksinya
+        $total_orders = $orders->pluck('trx_id')->unique()->count();
         $total_items = $orders->sum('qty');
         $total_spent = $orders->sum(function ($order) {
             return ($order->product_price ?? 0) * $order->qty;

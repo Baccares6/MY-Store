@@ -232,6 +232,8 @@
             <button type="submit" class="btn-submit">Register Account</button>
         </form>
 
+        @include('partials.social-login')
+
         <div class="footer-note">
             Already have an account? <a href="{{ route('login') }}">Log In</a>
             <div style="margin-top: 8px;"><a href="{{ route('home') }}">← Back to Store</a></div>

@@ -12,7 +12,16 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(function (\Illuminate\Http\Request $request) {
-            session()->flash('error', 'Silakan masuk ke akun Anda terlebih dahulu sebelum memasukkan produk ke keranjang belanja.');
+            // Pesan disesuaikan dengan halaman/aksi yang dicoba dibuka oleh tamu
+            $message = match (true) {
+                $request->is('cart/add')                  => 'Silakan masuk ke akun Anda terlebih dahulu sebelum memasukkan produk ke keranjang belanja.',
+                $request->is('cart', 'cart/*', 'checkout') => 'Silakan masuk ke akun Anda terlebih dahulu untuk melihat keranjang belanja.',
+                $request->is('user-dashboard')            => 'Silakan masuk ke akun Anda terlebih dahulu untuk membuka Dashboard.',
+                $request->is('admin', 'admin/*')          => 'Silakan masuk dengan akun admin terlebih dahulu.',
+                default                                   => 'Silakan masuk ke akun Anda terlebih dahulu.',
+            };
+            session()->flash('error', $message);
+
             return route('login');
         });
 

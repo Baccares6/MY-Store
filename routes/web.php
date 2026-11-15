@@ -8,6 +8,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\AddressController;
+use App\Http\Controllers\SocialAuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,6 +26,16 @@ Route::post('/register', [AuthController::class, 'register'])->name('register.pe
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.perform');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Login / Register dengan akun Google & Facebook (OAuth via Laravel Socialite)
+Route::middleware(['guest', 'throttle:20,1'])->group(function () {
+    Route::get('/auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])
+        ->whereIn('provider', array_keys(SocialAuthController::PROVIDERS))
+        ->name('social.redirect');
+    Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback'])
+        ->whereIn('provider', array_keys(SocialAuthController::PROVIDERS))
+        ->name('social.callback');
+});
 
 // Keranjang Belanja & Alur Transaksi Checkout (Wajib Login)
 Route::middleware('auth')->group(function () {

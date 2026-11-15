@@ -13,9 +13,11 @@ class HomeController extends Controller
      */
     public function index(Request $request)
     {
-        $keyword = $request->input('q');
-        $selectedCat = $request->input('category');
-        $selectedBrand = $request->input('brand');
+        // Hanya terima teks untuk kata kunci dan angka untuk ID kategori/merek;
+        // nilai lain (misal ?q[]=a atau ?category=abc) diabaikan agar halaman tidak error
+        $keyword = is_string($request->query('q')) ? trim($request->query('q')) : null;
+        $selectedCat = $this->numericFilter($request->query('category'));
+        $selectedBrand = $this->numericFilter($request->query('brand'));
 
         // Query dasar produk berelasi dengan kategori & brand
         $query = DB::table('products')
@@ -64,5 +66,10 @@ class HomeController extends Controller
             'selectedBrand',
             'cart_count'
         ));
+    }
+
+    private function numericFilter($value): ?int
+    {
+        return is_string($value) && ctype_digit($value) ? (int) $value : null;
     }
 }

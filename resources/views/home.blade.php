@@ -546,10 +546,10 @@
                 type="text" 
                 name="q" 
                 placeholder="Cari produk elektronik, aksesoris, laptop, tablet..." 
-                value="{{ request('q') }}"
+                value="{{ $keyword }}"
                 style="flex: 1; border: none; outline: none; font-size: 16px; color: #333; background: transparent; padding: 10px 0;"
             >
-            @if(request('q') || request('category') || request('brand'))
+            @if($keyword || $selectedCat || $selectedBrand)
                 <a href="{{ route('home') }}" style="display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: #f0f0f0; color: #666; text-decoration: none; margin-right: 10px; font-size: 16px;" title="Reset Filter">✕</a>
             @endif
             <button type="submit" style="background-color: var(--primary); color: #ffffff; border: none; outline: none; padding: 12px 32px; font-size: 15px; font-weight: 600; border-radius: 30px; cursor: pointer; transition: 0.2s;">
@@ -562,11 +562,11 @@
     <!-- Quick Category Filter Bar -->
     @if(isset($categories) && $categories->isNotEmpty())
     <div style="max-width: 1200px; margin: 0 auto 30px auto; padding: 0 15px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
-        <a href="{{ route('home') }}" style="padding: 6px 16px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: 700; background: {{ (!request('category') && !request('q')) ? 'var(--primary)' : '#ffffff' }}; color: {{ (!request('category') && !request('q')) ? '#ffffff' : 'var(--text-dark)' }}; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.03); transition: all 0.2s;">
+        <a href="{{ route('home') }}" style="padding: 6px 16px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: 700; background: {{ (!$selectedCat && !$keyword) ? 'var(--primary)' : '#ffffff' }}; color: {{ (!$selectedCat && !$keyword) ? '#ffffff' : 'var(--text-dark)' }}; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.03); transition: all 0.2s;">
             Semua Komoditas
         </a>
         @foreach($categories as $cat)
-            <a href="{{ route('home', ['category' => $cat->cat_id]) }}" style="padding: 6px 16px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: 700; background: {{ request('category') == $cat->cat_id ? 'var(--primary)' : '#ffffff' }}; color: {{ request('category') == $cat->cat_id ? '#ffffff' : 'var(--text-dark)' }}; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.03); transition: all 0.2s;">
+            <a href="{{ route('home', ['category' => $cat->cat_id]) }}" style="padding: 6px 16px; border-radius: 20px; text-decoration: none; font-size: 13px; font-weight: 700; background: {{ $selectedCat == $cat->cat_id ? 'var(--primary)' : '#ffffff' }}; color: {{ $selectedCat == $cat->cat_id ? '#ffffff' : 'var(--text-dark)' }}; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.03); transition: all 0.2s;">
                 {{ $cat->cat_title }}
             </a>
         @endforeach
@@ -614,9 +614,9 @@
 
         <div class="section-header">
             <h2 class="section-title">
-                @if(request('category'))
-                    Kategori: {{ $categories->firstWhere('cat_id', request('category'))->cat_title ?? 'Pilihan' }}
-                @elseif(request('q'))
+                @if($selectedCat)
+                    Kategori: {{ $categories->firstWhere('cat_id', $selectedCat)->cat_title ?? 'Pilihan' }}
+                @elseif($keyword)
                     Hasil Pencarian
                 @else
                     Katalog Komoditas Produk
@@ -627,18 +627,18 @@
             </div>
         </div>
 
-        @if(request('q') || request('category') || request('brand'))
+        @if($keyword || $selectedCat || $selectedBrand)
             <div style="background: #f1f5f9; border-radius: 8px; padding: 12px 18px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
                 <span style="font-size: 14px; color: var(--text-dark);">
                     Filter aktif: 
-                    @if(request('q'))
-                        Kata kunci <strong>"{{ request('q') }}"</strong>
+                    @if($keyword)
+                        Kata kunci <strong>"{{ $keyword }}"</strong>
                     @endif
-                    @if(request('category'))
-                        Kategori <strong>"{{ $categories->firstWhere('cat_id', request('category'))->cat_title ?? request('category') }}"</strong>
+                    @if($selectedCat)
+                        Kategori <strong>"{{ $categories->firstWhere('cat_id', $selectedCat)->cat_title ?? $selectedCat }}"</strong>
                     @endif
-                    @if(request('brand'))
-                        Brand <strong>"{{ $brands->firstWhere('brand_id', request('brand'))->brand_title ?? request('brand') }}"</strong>
+                    @if($selectedBrand)
+                        Brand <strong>"{{ $brands->firstWhere('brand_id', $selectedBrand)->brand_title ?? $selectedBrand }}"</strong>
                     @endif
                 </span>
                 <a href="{{ route('home') }}" style="color: var(--primary); font-size: 13px; font-weight: 700; text-decoration: none;">Reset Filter ✕</a>
@@ -688,9 +688,9 @@
                 <i class="fa fa-box-open" style="font-size: 52px; color: #cbd5e1; margin-bottom: 16px;"></i>
                 <h3 style="font-size: 20px; font-weight: 800; margin-bottom: 8px;">Tidak Ada Produk Ditemukan</h3>
                 <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
-                    @if(request('q'))
-                        Tidak ada komoditas dengan kata kunci "<strong>{{ request('q') }}</strong>".
-                    @elseif(request('category'))
+                    @if($keyword)
+                        Tidak ada komoditas dengan kata kunci "<strong>{{ $keyword }}</strong>".
+                    @elseif($selectedCat)
                         Belum ada komoditas pada kategori ini.
                     @else
                         Katalog produk masih kosong.

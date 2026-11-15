@@ -6,10 +6,26 @@ use App\Services\ShippingCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class CartController extends Controller
 {
+    // Batas jumlah per produk di keranjang (berlaku saat tambah maupun ubah jumlah)
+    private const MAX_QTY = 99;
+
+    private function qtyMessages(): array
+    {
+        return [
+            'qty.required'       => 'Jumlah produk wajib diisi.',
+            'qty.integer'        => 'Jumlah produk harus berupa angka.',
+            'qty.min'            => 'Jumlah produk minimal 1. Gunakan tombol hapus untuk mengeluarkan produk dari keranjang.',
+            'qty.max'            => 'Jumlah produk maksimal ' . self::MAX_QTY . ' unit.',
+            'product_id.exists'  => 'Produk tidak ditemukan.',
+            'cart_id.exists'     => 'Item keranjang tidak ditemukan.',
+        ];
+    }
+
     /**
      * Menampilkan isi keranjang belanja
      */
@@ -90,10 +106,14 @@ class CartController extends Controller
             return redirect()->route('login')->with('error', 'Silakan masuk ke akun Anda terlebih dahulu sebelum memasukkan produk ke keranjang belanja.');
         }
 
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'product_id' => 'required|integer|exists:products,product_id',
-            'qty'        => 'nullable|integer|min:1',
-        ]);
+            'qty'        => 'nullable|integer|min:1|max:' . self::MAX_QTY,
+        ], $this->qtyMessages());
+
+        if ($validator->fails()) {
+            return redirect()->back()->with('error', $validator->errors()->first());
+        }
 
         $productId = (int) $request->input('product_id');
         $qty = (int) $request->input('qty', 1);
@@ -107,10 +127,20 @@ class CartController extends Controller
             ->first();
 
         if ($existing) {
+            if ($existing->qty >= self::MAX_QTY) {
+                return redirect()->back()->with('error', 'Jumlah produk ini di keranjang sudah mencapai batas ' . self::MAX_QTY . ' unit.');
+            }
+
+            // Jumlah total per produk dibatasi, sama dengan batas saat mengubah jumlah di keranjang
+            $newQty = min($existing->qty + $qty, self::MAX_QTY);
             DB::table('cart')
                 ->where('id', $existing->id)
                 ->where('user_id', $userId)
-                ->update(['qty' => $existing->qty + $qty]);
+                ->update(['qty' => $newQty]);
+
+            if ($newQty < $existing->qty + $qty) {
+                return redirect()->back()->with('success', 'Produk ditambahkan. Jumlah maksimal per produk adalah ' . self::MAX_QTY . ' unit, jadi jumlahnya disesuaikan menjadi ' . self::MAX_QTY . '.');
+            }
         } else {
             DB::table('cart')->insert([
                 'p_id'    => $productId,
@@ -132,10 +162,14 @@ class CartController extends Controller
             return redirect()->route('login')->with('error', 'Silakan login terlebih dahulu.');
         }
 
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'cart_id' => 'required|integer|exists:cart,id',
-            'qty'     => 'required|integer|min:1|max:99',
-        ]);
+            'qty'     => 'required|integer|min:1|max:' . self::MAX_QTY,
+        ], $this->qtyMessages());
+
+        if ($validator->fails()) {
+            return redirect()->back()->with('error', $validator->errors()->first());
+        }
 
         $cartId = (int) $request->input('cart_id');
         $qty = (int) $request->input('qty');

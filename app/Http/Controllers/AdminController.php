@@ -105,15 +105,21 @@ class AdminController extends Controller
             'product_keywords' => 'nullable|string|max:255',
         ]);
 
+        if (!DB::table('products')->where('product_id', $id)->exists()) {
+            return redirect()->route('admin.dashboard')->with('error', 'Produk #' . $id . ' tidak ditemukan.');
+        }
+
+        // Kolom opsional yang dikosongkan diisi nilai bawaan seperti saat tambah produk
+        // (kolom teks pada tabel products tidak boleh NULL)
         DB::table('products')->where('product_id', $id)->update([
             'product_title'    => $validated['product_title'],
             'product_cat'      => $validated['product_cat'],
             'product_brand'    => $validated['product_brand'],
             'product_price'    => $validated['product_price'],
             'product_weight'   => $validated['product_weight'] ?? 1000,
-            'product_desc'     => $validated['product_desc'],
-            'product_image'    => $validated['product_image'],
-            'product_keywords' => $validated['product_keywords'],
+            'product_desc'     => $validated['product_desc'] ?? $validated['product_title'],
+            'product_image'    => $validated['product_image'] ?? '',
+            'product_keywords' => $validated['product_keywords'] ?? strtolower($validated['product_title']),
         ]);
 
         return redirect()->route('admin.dashboard')->with('success', 'Data produk #' . $id . ' berhasil diperbarui!');
@@ -124,6 +130,10 @@ class AdminController extends Controller
      */
     public function deleteProduct($id)
     {
+        if (!DB::table('products')->where('product_id', $id)->exists()) {
+            return redirect()->route('admin.dashboard')->with('error', 'Produk #' . $id . ' tidak ditemukan.');
+        }
+
         // Cek keterkaitan dengan tabel orders (Foreign Key)
         $hasOrders = DB::table('orders')->where('product_id', $id)->exists();
         if ($hasOrders) {
@@ -187,7 +197,10 @@ class AdminController extends Controller
      */
     public function deleteFaq($id)
     {
-        DB::table('chatbot_faqs')->where('id', $id)->delete();
+        $deleted = DB::table('chatbot_faqs')->where('id', $id)->delete();
+        if ($deleted === 0) {
+            return redirect()->route('admin.dashboard')->with('error', 'FAQ tidak ditemukan.');
+        }
 
         return redirect()->to(route('admin.dashboard') . '#chatbot')->with('success', 'FAQ chatbot berhasil dihapus.');
     }
