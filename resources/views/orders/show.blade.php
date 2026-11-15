@@ -206,7 +206,7 @@
                         <p class="mb-1 small text-muted">Dikirim {{ formatWib($trx->shipped_at) }} dengan {{ $shipment->courier ?? '' }} {{ $shipment->courier_service ?? '' }}</p>
                         <p class="mb-3">Nomor resi: <strong>{{ $trx->tracking_number }}</strong></p>
                         <form action="{{ route('orders.received', $trx->trx_id) }}" method="POST"
-                              data-confirm-title="Pesanan sudah diterima?" data-confirm-ok="Ya, Sudah Diterima" data-confirm-variant="success"
+                              data-confirm-title="Pesanan sudah diterima?" data-confirm-ok="Ya, Sudah Diterima" data-confirm-variant="warning" data-confirm-icon="package"
                               data-confirm="Pastikan semua barang sudah sampai dalam kondisi baik. Setelah dikonfirmasi, pesanan dinyatakan selesai.">
                             @csrf
                             <button type="submit" class="btn btn-brand fw-semibold">Pesanan Sudah Diterima</button>

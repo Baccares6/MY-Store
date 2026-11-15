@@ -65,7 +65,7 @@
                     <h2 class="h6 fw-bold mb-1">Dalam Pengiriman</h2>
                     <p class="small mb-3">Resi <strong>{{ $trx->tracking_number }}</strong>, dikirim {{ formatWib($trx->shipped_at) }}. Pesanan otomatis selesai saat pembeli menekan "Pesanan Sudah Diterima".</p>
                     <form action="{{ route('admin.orders.complete', $trx->trx_id) }}" method="POST"
-                          data-confirm-title="Tandai pesanan selesai?" data-confirm-ok="Tandai Selesai" data-confirm-variant="success"
+                          data-confirm-title="Tandai pesanan selesai?" data-confirm-ok="Tandai Selesai" data-confirm-variant="warning" data-confirm-icon="package"
                           data-confirm="Gunakan ini jika barang sudah diterima pembeli tetapi pembeli belum menekan &quot;Pesanan Sudah Diterima&quot;.">
                         @csrf
                         <button class="btn btn-outline-success btn-sm">Tandai Selesai</button>

@@ -6,9 +6,11 @@
                   data-confirm-title="Judul singkat?"
                   data-confirm-ok="Teks tombol setuju"
                   data-confirm-cancel="Teks tombol batal"     (opsional, bawaan: Batal)
-                  data-confirm-variant="danger|success|warning|primary"> (opsional, bawaan: primary)
+                  data-confirm-variant="danger|success|warning|primary"  (opsional, bawaan: primary)
+                  data-confirm-icon="question|trash|check|hourglass|package"> (opsional, bawaan sesuai variant)
     Warna: danger = hapus/batalkan, warning = periksa dulu sebelum menyetujui,
-           success = aksi yang menuntaskan sesuatu, primary = umum.
+           success = aksi yang sudah pasti benar, primary = umum.
+    Ikon bawaan: primary = question, danger = trash, success = check, warning = hourglass.
 --}}
 <style>
     .ms-confirm {
@@ -30,11 +32,12 @@
         display: flex; align-items: center; justify-content: center;
     }
     .ms-confirm-icon svg { width: 26px; height: 26px; display: none; }
-    /* Atribut hidden tidak berlaku pada SVG, jadi ikon dipilih lewat CSS sesuai variant */
-    .ms-confirm[data-variant="primary"] [data-icon="primary"],
-    .ms-confirm[data-variant="danger"]  [data-icon="danger"],
-    .ms-confirm[data-variant="success"] [data-icon="success"],
-    .ms-confirm[data-variant="warning"] [data-icon="warning"] { display: block; }
+    /* Atribut hidden tidak berlaku pada SVG, jadi ikon dipilih lewat CSS sesuai data-icon pada dialog */
+    .ms-confirm[data-icon="question"]  [data-glyph="question"],
+    .ms-confirm[data-icon="trash"]     [data-glyph="trash"],
+    .ms-confirm[data-icon="check"]     [data-glyph="check"],
+    .ms-confirm[data-icon="hourglass"] [data-glyph="hourglass"],
+    .ms-confirm[data-icon="package"]   [data-glyph="package"] { display: block; }
     .ms-confirm[data-variant="primary"] .ms-confirm-icon { background: #fde8e8; color: #870000; }
     .ms-confirm[data-variant="danger"]  .ms-confirm-icon { background: #fee2e2; color: #dc2626; }
     .ms-confirm[data-variant="success"] .ms-confirm-icon { background: #dcfce7; color: #16a34a; }
@@ -61,15 +64,17 @@
     .ms-confirm-ok:disabled { opacity: .7; cursor: wait; }
 </style>
 
-<dialog class="ms-confirm" id="ms-confirm" data-variant="primary" aria-labelledby="ms-confirm-title" aria-describedby="ms-confirm-message">
+<dialog class="ms-confirm" id="ms-confirm" data-variant="primary" data-icon="question" aria-labelledby="ms-confirm-title" aria-describedby="ms-confirm-message">
     <div class="ms-confirm-body">
         <div class="ms-confirm-icon" aria-hidden="true">
-            {{-- Hanya ikon yang sesuai variant yang tampil (diatur lewat CSS) --}}
-            <svg data-icon="primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-            <svg data-icon="danger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-            <svg data-icon="success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            {{-- Hanya ikon yang dipilih yang tampil (diatur lewat CSS) --}}
+            <svg data-glyph="question" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            <svg data-glyph="trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+            <svg data-glyph="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
             {{-- Jam pasir: tahap yang masih menunggu keputusan/konfirmasi --}}
-            <svg data-icon="warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22"/><path d="M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/></svg>
+            <svg data-glyph="hourglass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22"/><path d="M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/></svg>
+            {{-- Kotak paket: konfirmasi penerimaan barang --}}
+            <svg data-glyph="package" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/><path d="m7.5 4.27 9 5.15"/></svg>
         </div>
         <h2 class="ms-confirm-title" id="ms-confirm-title"></h2>
         <p class="ms-confirm-message" id="ms-confirm-message"></p>
@@ -100,6 +105,10 @@
 
             const variant = ['danger', 'success', 'warning', 'primary'].includes(form.dataset.confirmVariant) ? form.dataset.confirmVariant : 'primary';
             dialog.dataset.variant = variant;
+
+            const defaultIcons = { primary: 'question', danger: 'trash', success: 'check', warning: 'hourglass' };
+            const icons = ['question', 'trash', 'check', 'hourglass', 'package'];
+            dialog.dataset.icon = icons.includes(form.dataset.confirmIcon) ? form.dataset.confirmIcon : defaultIcons[variant];
 
             title.textContent = form.dataset.confirmTitle || 'Lanjutkan?';
             message.textContent = form.dataset.confirm;
